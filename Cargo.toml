@@ -1,0 +1,23 @@
+[package]
+name = "vanilla-extractor"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["lib"]
+
+[[bin]]
+name = "vanilla-extractor"
+path = "src/main.rs"
+test = false
+bench = false
+
+[profile.release]
+lto = true
+opt-level = "s"
+codegen-units = 1
+split-debuginfo = "packed"
+
+[dependencies]
+byteorder = "1.4"
+pelite = { version = ">=0.9.2", default-features = false, features = ["std"] }
