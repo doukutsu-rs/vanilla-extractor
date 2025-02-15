@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    paths-ignore:
+      - '.gitignore'
+      - '.github/*'
+      - '**.md'
+      - 'LICENSE'
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - name: Linux x86_64
+            os: ubuntu-latest
+            channel: stable
+            target: x86_64-unknown-linux-musl
+            target_name: linux-x86-64
+            arch_name: x86-64
+          - name: Linux ARM64
+            os: ubuntu-latest
+            channel: stable
+            target: aarch64-unknown-linux-musl
+            target_name: linux-arm64
+            arch_name: arm64
+          - name: Windows x64
+            os: windows-latest
+            channel: stable
+            target: x86_64-pc-windows-msvc
+            target_name: windows-x64
+            acrh_name: x64
+          - name: Windows x32
+            os: windows-latest
+            channel: stable
+            target: i686-pc-windows-msvc
+            target_name: windows-x32
+            acrh_name: i686
+
+    steps:
+      - run: cd /dev/shm
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.arch_name == 'arm64' }}
+        run: sudo apt install gcc-aarch64-linux-gnu musl-dev
+
+      - name: Setup rust toolchain
+        run: |
+          rustup default ${{ matrix.channel }}
+          rustup target add ${{ matrix.target }}
+
+          rustc -vV
+          cargo -vV
+
+      - name: Build
+        run: |
+          mkdir release
+
+          # TODO: figure out how to iterate over the targets array to build the app for multiple targets on single runner
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            cargo build --release --locked --target ${{ matrix.target }}
+            cp ./target/${{ matrix.target }}/release/vanilla-extractor.exe release/vanilla-extractor_${{ matrix.arch_name }}.exe
+          elif [ "${{ runner.os }}" == "Linux" ]; then
+            if [ "${{ matrix.arch_name }}" == "arm64" ]; then
+              export AR_aarch64_unknown_linux_musl=aarch64-linux-gnu-gcc-ar
+              export RUSTFLAGS="-C linker=aarch64-linux-gnu-gcc"
+            fi
+
+            cargo build --release --locked --target ${{ matrix.target }}
+            cp -a ./target/${{ matrix.target }}/release/vanilla-extractor release/vanilla-extractor_${{ matrix.arch_name }}.elf
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vanilla-extractor_${{ matrix.target_name }}_${{ github.run_number }}
+          path: ./release/*
+          if-no-files-found: error
