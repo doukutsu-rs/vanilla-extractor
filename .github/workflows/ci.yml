@@ -38,13 +38,13 @@ jobs:
             channel: stable
             target: x86_64-pc-windows-msvc
             target_name: windows-x64
-            acrh_name: x64
+            arch_name: x64
           - name: Windows x32
             os: windows-latest
             channel: stable
             target: i686-pc-windows-msvc
             target_name: windows-x32
-            acrh_name: i686
+            arch_name: i686
 
     steps:
       - run: cd /dev/shm
