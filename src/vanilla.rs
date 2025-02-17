@@ -114,10 +114,7 @@ impl VanillaExtractor {
             return Ok(());
         }
 
-        let result = std::fs::create_dir_all(path);
-        if result.is_err() {
-            return Err(ParseError(format!("Failed to create directory structure: {}", result.unwrap_err())));
-        }
+        std::fs::create_dir_all(path).or_else(|e| Err(ParseError(format!("Failed to create directory structure: {}", e))))?;
 
         Ok(())
     }
@@ -134,9 +131,7 @@ impl VanillaExtractor {
             org_path.push(self.data_base_dir.clone());
             org_path.push("Org/");
 
-            if self.deep_create_dir_if_not_exists(org_path.clone()).is_err() {
-                return Err(ParseError("Failed to create directory structure.".to_string()));
-            }
+            self.deep_create_dir_if_not_exists(org_path.clone())?;
 
             org_path.push(format!("{}.org", org.name));
 
@@ -169,18 +164,11 @@ impl VanillaExtractor {
             let mut data_path = self.root.clone();
             data_path.push(self.data_base_dir.clone());
 
-            if self.deep_create_dir_if_not_exists(data_path.clone()).is_err() {
-                return Err(ParseError("Failed to create data directory structure.".to_string()));
-            }
+            self.deep_create_dir_if_not_exists(data_path.clone())?;
 
             data_path.push(format!("{}.pbm", bitmap.name));
 
-            let file = std::fs::File::create(data_path);
-            if file.is_err() {
-                return Err(ParseError("Failed to create bitmap file.".to_string()));
-            }
-
-            let mut file = file.unwrap();
+            let mut file = std::fs::File::create(data_path).or_else(|e| Err(ParseError(format!("Failed to create bitmap file: {}.", e))))?;
 
             file.write_u8(0x42)?; // B
             file.write_u8(0x4D)?; // M
@@ -188,10 +176,7 @@ impl VanillaExtractor {
             file.write_u32::<LE>(0)?; // unused null bytes
             file.write_u32::<LE>(0x76)?; // Bitmap data offset (hardcoded for now, might wanna get the actual offset)
 
-            let result = file.write_all(&bitmap.bytes);
-            if result.is_err() {
-                return Err(ParseError("Failed to write bitmap file.".to_string()));
-            }
+            file.write_all(&bitmap.bytes).or_else(|e| Err(ParseError(format!("Failed to write bitmap file: {}.", e))))?;
 
             println!("Extracted bitmap file: {}", bitmap.name);
         }
@@ -253,24 +238,13 @@ impl VanillaExtractor {
         let mut stage_tbl_path = self.root.clone();
         stage_tbl_path.push(self.data_base_dir.clone());
 
-        if self.deep_create_dir_if_not_exists(stage_tbl_path.clone()).is_err() {
-            return Err(ParseError("Failed to create data directory structure.".to_string()));
-        }
+        self.deep_create_dir_if_not_exists(stage_tbl_path.clone())?;
 
         stage_tbl_path.push("stage.sect");
 
-        let mut stage_tbl_file = match std::fs::File::create(stage_tbl_path) {
-            Ok(file) => file,
-            Err(_) => {
-                return Err(ParseError("Failed to create stage table file.".to_string()));
-            }
-        };
+        let mut stage_tbl_file = std::fs::File::create(stage_tbl_path).or_else(|e| Err(ParseError(format!("Failed to create stage table file: {}.", e))))?;
 
-        let result = stage_tbl_file.write_all(byte_slice);
-        if result.is_err() {
-            return Err(ParseError("Failed to write to stage table file.".to_string()));
-        }
-
+        stage_tbl_file.write_all(byte_slice).or_else(|e| Err(ParseError(format!("Failed to write to stage table file: {}.", e))))?;
         Ok(())
     }
 }
