@@ -53,6 +53,15 @@ jobs:
         if: ${{ matrix.os == 'ubuntu-latest' && matrix.arch_name == 'arm64' }}
         run: sudo apt install gcc-aarch64-linux-gnu musl-dev
 
+      - name: Restore cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ~/.cargo
+            ~/.rustup
+            target
+          key: ${{ github.ref_name }}-${{ matrix.target_name }}-${{ hashFiles('**/Cargo.lock') }}-cargo
+
       - name: Setup rust toolchain
         run: |
           rustup default ${{ matrix.channel }}
@@ -65,6 +74,8 @@ jobs:
         run: |
           mkdir release
 
+
+          export CARGO_INCREMENTAL=1
           # TODO: figure out how to iterate over the targets array to build the app for multiple targets on single runner
           if [ "${{ runner.os }}" == "Windows" ]; then
             cargo build --release --locked --target ${{ matrix.target }}
@@ -85,3 +96,12 @@ jobs:
           name: vanilla-extractor_${{ matrix.target_name }}_${{ github.run_number }}
           path: ./release/*
           if-no-files-found: error
+
+      - name: Save cache
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.cargo
+            ~/.rustup
+            target
+          key: ${{ github.ref_name }}-${{ matrix.target_name }}-${{ hashFiles('**/Cargo.lock') }}-cargo
